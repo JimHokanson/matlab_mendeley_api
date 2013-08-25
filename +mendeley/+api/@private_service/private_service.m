@@ -14,6 +14,9 @@ classdef private_service < sl.obj.handle_light
     %   mendeley.api.public_service
     
     
+    
+    
+    
     % %Example code for a function
     % %------------------------------------------------------------------
     %
@@ -37,6 +40,7 @@ classdef private_service < sl.obj.handle_light
         oauth  %Class: oauth.request.public
     end
     
+    %Constructor and Generic Code Function Handling -----------------------
     methods
         function obj = private_service(private_oauth_creds)
             %
@@ -61,15 +65,23 @@ classdef private_service < sl.obj.handle_light
             %    ===========================================================
             %    url     :
             %    params  : cell array of property/value pairs
-            %    options : Class: mendeley.api.options
+            %    options : mendeley.api.options
             %
             %   See Also:
             %   mendeley.api.pvt_response
+            %   oauth.urlread_response
+            %   mendeley.api.pvt_response.createObject
             
-            r = obj.oauth.makeRequest(url,options.http_method,params,options.oauth_options);
+            %oauth.request.private.makeRequest
+            if strcmp(options.return_type,'raw')
+                options.oauth_options.populate_raw = true;
+                options.oauth_options.parse_content_type = false;
+                r = obj.oauth.makeRequest(url,options.http_method,params,options.oauth_options);
+            else
+                r = obj.oauth.makeRequest(url,options.http_method,params,options.oauth_options);
+            end
             %r : Class: oauth.urlread_response
             
-            %TODO: Check response, determine whether error is present
             success = r.status_value == options.response_value;
             if options.throw_error && ~success
                 error('Error: %s',r.raw)
@@ -85,8 +97,10 @@ classdef private_service < sl.obj.handle_light
                         %i.e. this is basically getting the name of the caller
                         %and creating a class with the same name as the caller
                         %length('private_service.') = 16
-                        s    = dbstack;
-                        type = s(2).name(17:end);
+                        %
+                        %   private_service.doc_library -> doc_library
+                        s      = dbstack;
+                        type   = s(2).name(17:end);
                         output = mendeley.api.pvt_response.createObject(type,r);
                     else
                         output = feval(fh,r.response);
@@ -109,7 +123,7 @@ classdef private_service < sl.obj.handle_light
             
             input_options = cell2struct(repmat({''},length(params)+1,1),[params(:); {'options'}]);
             
-            input_options = processVarargin(input_options,varargin_input);
+            input_options = sl.in.processVarargin(input_options,varargin_input);
             
             %TODO: Run numeric processing ...
             %use structfun
@@ -130,7 +144,7 @@ classdef private_service < sl.obj.handle_light
         end
     end
     
-    %Document Methods =====================================================
+    %Document Methods -----------------------------------------------------
     methods
         function [output,success] = doc_library(obj,varargin)
             %doc_library
@@ -237,7 +251,7 @@ classdef private_service < sl.obj.handle_light
         end
     end
     
-    %Profile Info =========================================================
+    %Profile Info ---------------------------------------------------------
     methods
         function [output,success] = profile_info(obj,id,varargin)
             %
@@ -261,9 +275,7 @@ classdef private_service < sl.obj.handle_light
             url    = ['http://api.mendeley.com/oapi/profiles/info/' id '/'];
             
             [params,options]  = processInputOptions(obj,params,varargin);
-            
-            %options.object_fh = @mendeley.api.pvt_response.profile_info;
-            
+                        
             [output,success]  = obj.makeRequest(url,params,options);
         end
     end

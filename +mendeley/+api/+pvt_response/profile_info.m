@@ -1,6 +1,5 @@
 classdef profile_info < mendeley.api.pvt_response
     %
-    %
     %   Class:
     %   mendeley.api.pvt_response.profile_info
     %
@@ -34,7 +33,7 @@ classdef profile_info < mendeley.api.pvt_response
     
     properties (Hidden)
         %Enumerated Values ...
-        profile_id          %expose via method ... getUniqueID
+        profile_id          %exposed via .getUniqueID()
         discipline_id
         academic_status_id
         photo_link
@@ -42,6 +41,7 @@ classdef profile_info < mendeley.api.pvt_response
     
     methods 
         function value = getUniqueID(obj)
+           %I think this is a unique ID ...
            value = obj.profile_id; 
         end
     end

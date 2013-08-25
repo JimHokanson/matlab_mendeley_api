@@ -1,6 +1,5 @@
 classdef (Hidden) pvt_response < sl.obj.handle_light
     %
-    %
     %   Class:
     %   mendeley.api.pvt_response
     %
