@@ -12,9 +12,24 @@ classdef private_service < sl.obj.handle_light
     %
     %   See Also:
     %   mendeley.api.public_service
+    %   mendeley.api.options
     
     
-    
+    %CODE PROTOTYPE DESCRIPTION
+    %======================================================================
+    %
+    %   Optional inputs to a function can be either:
+    %   -------------------------------------------------------------------
+    %   1) Property/Value pairs that are optional to the function being
+    %   called. For example (TODO: FInish this)
+    %
+    %
+    %
+    %   2) 'options', with the value of the type:
+    %           mendeley.api.options
+    %
+    %
+    %
     
     
     % %Example code for a function
@@ -72,9 +87,10 @@ classdef private_service < sl.obj.handle_light
             %   oauth.urlread_response
             %   mendeley.api.pvt_response.createObject
             
+            %???? - why doesn't this  ('raw') get handled in the method????
             %oauth.request.private.makeRequest
             if strcmp(options.return_type,'raw')
-                options.oauth_options.populate_raw = true;
+                options.oauth_options.populate_raw       = true;
                 options.oauth_options.parse_content_type = false;
                 r = obj.oauth.makeRequest(url,options.http_method,params,options.oauth_options);
             else
@@ -86,7 +102,7 @@ classdef private_service < sl.obj.handle_light
             if options.throw_error && ~success
                 error('Error: %s',r.raw)
             end
-
+            
             %Processing the output ...
             switch options.return_type
                 case 'object'
@@ -114,14 +130,25 @@ classdef private_service < sl.obj.handle_light
             end
             
         end
-        function [params,options,p_struct] = processInputOptions(~,params,varargin_input)
+        function [params,options,p_struct] = processInputOptions(~,default_params,varargin_input)
             %
             %
-            %   [params,options,p_struct] = processInputOptions(~,params,varargin_input)
+            %   [params,options,p_struct] = processInputOptions(obj,params,varargin_input)
+            %
+            %   INPUTS
+            %   ===========================================================
+            %   default_params: (cell of prop/value pairs)
+            %   varargin_input: the varargin input argument from the
+            %       function calling this function
+            %
+            %   OUTPUTS
+            %   ===========================================================
+            %
+            %
             %
             %   TODO: Document this code ...
             
-            input_options = cell2struct(repmat({''},length(params)+1,1),[params(:); {'options'}]);
+            input_options = cell2struct(repmat({''},length(default_params)+1,1),[default_params(:); {'options'}]);
             
             input_options = sl.in.processVarargin(input_options,varargin_input);
             
@@ -156,7 +183,7 @@ classdef private_service < sl.obj.handle_light
             %   OPTIONAL INPUTS (prop/value pairs)
             %   ===========================================================
             %   page  : 0 based page
-            %   items :
+            %   items : # of items to request per page
             %
             %   Status: DONE
             
@@ -199,24 +226,28 @@ classdef private_service < sl.obj.handle_light
             
         end
         function r = doc_deleteEntry(obj,id)
-            %DONE
+            %
             %
             %
             
-            if isnumeric(id)
-                id = int2str(id);
-            end
-            url = ['http://api.mendeley.com/oapi/library/documents/' id '/'];
+            %NOT YET FINISHED
+            %- needs to use new options instead of passing in method
+            %to the function ...
             
-            r = obj.makeRequest(url,{},'http_method','DELETE');
+% % %             if isnumeric(id)
+% % %                 id = int2str(id);
+% % %             end
+% % %             url = ['http://api.mendeley.com/oapi/library/documents/' id '/'];
+% % %             
+% % %             r = obj.makeRequest(url,{},'http_method','DELETE');
             
         end
         function [output,success] = doc_details(obj,id,varargin)
-            %
+            %Document Details
             %
             %   [output,success] = doc_details(obj,id,varargin)
             %
-            %    Returns details for a specific citation
+            %    Returns details for a specific document entry.
             %
             %    #doc_page: http://apidocs.mendeley.com/home/user-specific-methods/user-library-document-details
             
@@ -243,7 +274,55 @@ classdef private_service < sl.obj.handle_light
             end
             
         end
-        function doc_uploadFile(obj,varargin)
+        function [output,success] = doc_uploadFile(obj,id,file_path,varargin)
+            %
+            %
+            %    #doc_page: http://apidocs.mendeley.com/home/user-specific-methods/file-upload
+            %
+            %   INPUTS
+            %   -------------------------
+            %   file_path : (char or java.io.File)
+            %
+            %    IMPROVEMENTS:
+            %    -----------------------------------------------------------
+            %    1) - reading the file twice - see comment below
+            %    2) - reading the file at once vs in chunks ... - urlread
+            %    modificaiton would be needed
+            
+            if isnumeric(id)
+                id = sprintf('%ld',id);
+            end
+            
+            %NOTE: This will read the file twice
+            %We can eventually pass in the data itself with a flag
+            %indicating this to be the case ...
+            hash = sl.crypt.getSHA1(file_path,'is_file',true);
+            
+            params = {};
+            
+            url = ['http://api.mendeley.com/oapi/library/documents/' id '/'];
+            
+            [params,options] = obj.processInputOptions(params,varargin);
+            
+            options.oauth_options.extra_oauth_params = {'oauth_body_hash' hash};
+            
+            options.return_type    = 'raw'; %There's nothing of interest returned
+            options.http_method    = 'PUT';
+            options.response_value = 201;
+            uopts = options.oauth_options.urlread_options;
+            uopts.body = sl.io.fileRead(file_path,'*uint8');
+            
+            uopts.headers(1).name  = 'Content-Disposition';
+            file_name = sl.dir.getFileName(file_path);
+            uopts.headers(1).value = sprintf('attachment; filename="%s"',file_name);
+            uopts.headers(2).name  = 'Content-Type';
+            uopts.headers(2).value = 'application/pdf';
+            
+            [output,success]  = obj.makeRequest(url,params,options);
+            
+            %r = obj.makeRequest(url,{},'http_method','DELETE');
+            
+            
             
         end
         function doc_updateEntry(obj,varargin)
@@ -275,7 +354,7 @@ classdef private_service < sl.obj.handle_light
             url    = ['http://api.mendeley.com/oapi/profiles/info/' id '/'];
             
             [params,options]  = processInputOptions(obj,params,varargin);
-                        
+            
             [output,success]  = obj.makeRequest(url,params,options);
         end
     end
